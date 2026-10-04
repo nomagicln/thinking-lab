@@ -1,9 +1,18 @@
 # 重复囚徒困境锦标赛 · Axelrod 实验复现
 
-一个零依赖的单页应用，用可视化方式复现罗伯特·阿克塞尔罗德 1980 年的计算机锦标赛：
+一个 React 单页应用，用可视化方式复现罗伯特·阿克塞尔罗德 1980 年的计算机锦标赛：
 让一群策略两两相遇两百个回合，看谁的总分最高。
 
-**打开方式：** 双击 `index.html` 即可（不需要服务器、不需要联网、没有构建步骤）。
+**在线访问：** https://nomagicln.github.io/thinking-lab/
+
+**本地运行：**
+
+```bash
+npm install
+npm run dev          # 开发服务器
+npm run build        # 产出静态站点到 dist/
+npm run preview      # 预览构建产物
+```
 
 ---
 
@@ -114,7 +123,7 @@
   选手数 K 时，每人每轮要和 K−1 位对手过招，所以每轮共 K(K−1) 次出手。
 - **数字对得上**：回放的种子派生与锦标赛逐字对齐，
   所以只选两个人时，回放出来的就是 02 节矩阵里那一对的**第一次交手**，
-  逐轮动作完全一致（`test/verify.js` 第 3.5 节专门守着这条不变式）。
+  逐轮动作完全一致（`src/lib/engine.test.ts` 第 3.5 节专门守着这条不变式）。
 - **几何延续模式下**回放取 1/(1−w) 的期望轮数当作统一回合数 ——
   各对长度不一时无法逐轮对齐，这是有意的取舍。
 
@@ -228,37 +237,50 @@
 
 ---
 
-## 七、文件结构
+## 七、代码结构
+
+计算与视图完全分离：`src/lib/` 里是纯函数，不认识 React，可以直接在 Node 里测试；
+`src/components/` 只负责把数据画出来。
 
 ```
 axelrod-experiment/
-├── index.html              界面骨架
-├── styles/main.css         视觉系统（深墨底 / 铜色批注 / 朱红与玉绿对撞）
+├── index.html                  Vite 入口
+├── vite.config.ts              base: './'，所以 Pages 子路径与本地预览都能直接用
 ├── src/
-│   ├── engine.js           计算内核：收益矩阵、对局、锦标赛、生态演化（可独立被 node 引用）
-│   ├── strategies.js       17 位策略定义 + 阵容预设 + 1980 文献数据
-│   ├── charts.js           可视化图层：条形图、热力图、折线、堆叠面积、逐轮回放
-│   └── app.js              界面状态与渲染编排
+│   ├── main.tsx                挂载
+│   ├── App.tsx                 状态与编排（所有派生数据走 useMemo）
+│   ├── lib/
+│   │   ├── engine.ts           计算内核：收益矩阵 / 对局 / 循环赛 / 生态演化 / 特质测量
+│   │   ├── engine.test.ts      69 项科学自检（vitest）
+│   │   ├── strategies.ts       17 位策略 + 阵容预设 + 1980 文献数据
+│   │   └── format.ts           数字格式化、选手配色、热力色阶
+│   ├── components/
+│   │   ├── Rail.tsx            左侧控制台：收益矩阵 / 对局规则 / 参赛阵容
+│   │   ├── charts.tsx          三块 SVG 图表：热力图、折线、堆叠面积
+│   │   ├── Playback.tsx        多人同步回放（canvas 泳道 + 快照矩阵）
+│   │   ├── Sections.tsx        结论 / 排名 / 洞察卡 / 文献对照 / 策略档案
+│   │   └── common.tsx          章节容器、悬停浮标、特质条
+│   └── styles/main.css         视觉系统
 └── test/
-    ├── verify.js           72 项科学自检（纯 node，不需要浏览器）
-    └── browser-check.js    58 项端到端检查（无头 Chrome over CDP）
+    └── browser-check.cjs       49 项端到端检查（无头 Chrome over CDP）
 ```
-
----
 
 ## 八、验证
 
 ```bash
-cd axelrod-experiment
-
-# 科学正确性：收益结算、可复现性、TFT 夺冠、噪音回声效应、生态收敛、参数敏感性
-node test/verify.js
-
-# 端到端：无头浏览器加载页面，抓控制台错误 + 断言渲染结果 + 模拟交互
-node test/browser-check.js
+npm run typecheck    # TypeScript 严格模式
+npm test             # 69 项科学自检（vitest，纯 Node）
+npm run test:e2e     # 构建后跑 49 项端到端检查（无头 Chrome over CDP）
+npm run verify       # 以上全部
 ```
 
-`verify.js` 的 72 项断言全部对应可查证的博弈论结论，而不是「跑起来没报错」。例如：
+端到端检查默认打本地构建产物；也可以直接打线上站点：
+
+```bash
+node test/browser-check.cjs --url https://nomagicln.github.io/thinking-lab/
+```
+
+`npm test` 的 69 项断言全部对应可查证的博弈论结论，而不是「跑起来没报错」。例如：
 
 - TFT 对 TFT 全 200 轮合作，各得 600 分（解析可验证）
 - TFT 对 ALLD 恰好 199 分（0 + 199×1）；ALLD 得 204 分
@@ -271,10 +293,10 @@ node test/browser-check.js
   巴甫洛夫破局 100%、随机五项都在 0.5 附近
 - 17 位策略产出 16 种互不相同的特质组合，唯一重合的是 tft/ctft
 
-`browser-check.js` 会顺带把整页截图存到 `.preview.png`。
-
-多人回放内核另有 6 项不变式自检：K 位参与者时每人每轮恰好 K−1 次出手、
-`coopFrac` 与真实出手互相吻合、累计分严格等于每轮收益之和、逐轮动作可回放复现。
+端到端检查覆盖渲染结果与真实交互（改参数、切阵容、切几何模式、点矩阵格子联动回放、
+滚动揭示不锁死正文），并顺带把整页截图存到 `.preview.png`。
+这条链路抓到过两个真 bug：切换几何延续模式时对局长度骤变导致游标越界崩溃，
+以及播到底之后点「播放」没有反应。
 
 ---
 

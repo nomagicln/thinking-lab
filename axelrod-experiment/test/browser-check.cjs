@@ -34,8 +34,12 @@ if (!CHROME) {
   console.error('找不到可用的 Chrome 可执行文件')
   process.exit(2)
 }
-if (!fs.existsSync(path.join(DIST, 'index.html'))) {
-  console.error('dist/ 不存在，请先执行 npm run build')
+// --url <地址> 可以直接检查已经部署好的站点（跳过本地 preview）
+const urlArg = process.argv.indexOf('--url')
+const REMOTE_URL = urlArg > -1 ? process.argv[urlArg + 1] : null
+
+if (!REMOTE_URL && !fs.existsSync(path.join(DIST, 'index.html'))) {
+  console.error('dist/ 不存在，请先执行 npm run build（或用 --url 检查线上站点）')
   process.exit(2)
 }
 
@@ -93,19 +97,25 @@ const setInput = (id, value) => `(function(){
 /* ------------------------------------------------------------------ */
 
 async function main() {
-  const port = await freePort()
-  const url = `http://127.0.0.1:${port}/`
+  let url = REMOTE_URL
+  let server = null
 
-  const viteBin = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js')
-  const server = child.spawn(
-    process.execPath,
-    [viteBin, 'preview', '--host', '127.0.0.1', '--port', String(port), '--strictPort'],
-    { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] }
-  )
-  server.stderr.on('data', (d) => {
-    const s = String(d)
-    if (/error/i.test(s)) console.error('[vite]', s.trim())
-  })
+  if (!url) {
+    const port = await freePort()
+    url = `http://127.0.0.1:${port}/`
+    const viteBin = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js')
+    server = child.spawn(
+      process.execPath,
+      [viteBin, 'preview', '--host', '127.0.0.1', '--port', String(port), '--strictPort'],
+      { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] }
+    )
+    server.stderr.on('data', (d) => {
+      const s = String(d)
+      if (/error/i.test(s)) console.error('[vite]', s.trim())
+    })
+  } else {
+    console.log('\n\x1b[1m目标：' + url + '\x1b[0m')
+  }
 
   const debugPort = await freePort()
   const chrome = child.spawn(
@@ -124,7 +134,7 @@ async function main() {
 
   const cleanup = () => {
     try { chrome.kill() } catch { /* noop */ }
-    try { server.kill() } catch { /* noop */ }
+    try { if (server) server.kill() } catch { /* noop */ }
   }
 
   try {
