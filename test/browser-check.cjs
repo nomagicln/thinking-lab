@@ -110,6 +110,39 @@ const CANVAS_HAS_PIXELS = (sel) => `(function(){
   return false;
 })()`
 
+
+/**
+ * 导航链接检查 —— 每页都跑。
+ *
+ * 这里必须真的 fetch 一遍：链接拼错（比如从 /boids/ 页面链到 ./axelrod/，
+ * 解析成 /boids/axelrod/）在 DOM 里看不出任何异常，只有请求才会 404。
+ */
+async function checkNav(ev, base, pageName) {
+  group('导航链接')
+  const raw = await ev(`(async function(){
+    var as = Array.from(document.querySelectorAll('.labnav a'));
+    var out = [];
+    for (var i = 0; i < as.length; i++) {
+      var href = as[i].getAttribute('href');
+      try {
+        var r = await fetch(as[i].href, { method: 'GET' });
+        out.push({ label: as[i].textContent.trim(), href: href, status: r.status });
+      } catch (e) {
+        out.push({ label: as[i].textContent.trim(), href: href, status: 0 });
+      }
+    }
+    return JSON.stringify(out);
+  })()`)
+  const links = JSON.parse(raw)
+  check(`${pageName}：导航链接数量正常`, links.length >= 3, links.map((l) => l.href).join(' '))
+  const broken = links.filter((l) => l.status !== 200)
+  check(`${pageName}：每个导航链接都能打开（不是拼错的子路径）`,
+    broken.length === 0,
+    broken.length ? broken.map((l) => l.href + '→' + l.status).join(' ') : links.map((l) => l.href).join(' '))
+  const dangling = links.filter((l) => l.status === 200 && /\/(axelrod|boids|maxwell-demon)\/\1\//.test(new URL(l.href, base).pathname))
+  check(`${pageName}：没有重复拼接的路径段`, dangling.length === 0)
+}
+
 /* ================================================================== *
  * 各页断言
  * ================================================================== */
@@ -186,6 +219,9 @@ async function checkBoids(ev) {
   check('四项读数', (await ev("document.querySelectorAll('#flock-readouts .readout').length")) === 4)
   const pol = parseFloat(await ev("document.querySelectorAll('#flock-readouts .readout__value')[0].textContent"))
   check('极化度是 0..1 的合法值', pol >= 0 && pol <= 1, String(pol))
+  check('鸟的数量上限 ≥ 2000（加了空间网格之后才有意义）',
+    Number(await ev("document.getElementById('in-count').max")) >= 2000,
+    'max=' + (await ev("document.getElementById('in-count').max")))
   check('已自动选中一只鸟', /已选中第 \d+ 只/.test(await ev("document.getElementById('selection-note').textContent") || ''))
 
   group('Boids · 规则分解')
@@ -212,19 +248,22 @@ async function checkBoids(ev) {
   const coh = pick('只有聚合')
   const all = pick('三条全开')
 
-  // 每条规则单干都会退化，但退化的方式各不相同 —— 这才是消融表的意义
+  // 这四条断言都是「跨种子稳定」的事实（6 个种子实测）：
+  //   分离 极0.09 径140 邻17.9 ｜ 对齐 极1.00 径110 邻13.1
+  //   聚合 极0.43 径43  邻6.4   ｜ 全开 极0.99 径36  邻8.2
+  // 注意「只有聚合半径最小」是错的 —— 全开才是最紧的，因为默认权重里
+  // 分离 1.8 反而把队伍收得更拢。断言必须跟着实测走，不能跟着直觉走。
   check('只有分离 → 一盘散沙（最近邻最大、几乎没有共同方向）',
-    !!sep && abl.every((r) => sep.nnd >= r.nnd - 0.01) && sep.pol < 0.3,
-    sep && `最近邻 ${sep.nnd} 极化度 ${sep.pol}`)
-  check('只有聚合 → 挤成一坨（半径最小）',
-    !!coh && abl.every((r) => coh.radius <= r.radius + 0.5),
-    coh && `半径 ${coh.radius}`)
-  check('只有对齐 → 方向最整齐（对齐就是序参量的直接来源）',
-    !!ali && abl.every((r) => ali.pol >= r.pol - 0.005),
+    !!sep && abl.every((r) => sep.nnd >= r.nnd - 0.01) && sep.radius >= Math.max(...abl.map((r) => r.radius)) - 0.5 && sep.pol < 0.3,
+    sep && `最近邻 ${sep.nnd} 半径 ${sep.radius} 极化度 ${sep.pol}`)
+  check('只有对齐 → 方向最整齐', !!ali && abl.every((r) => ali.pol >= r.pol - 0.005),
     ali && `极化度 ${ali.pol}`)
-  check('三条全开是唯一同时做到「有序」且「没塌缩」的配置',
-    !!all && all.pol > 0.9 && all.nnd > coh.nnd * 1.25,
-    all && `极化度 ${all.pol}、最近邻 ${all.nnd}，对比只有聚合的 ${coh && coh.nnd}`)
+  check('只有聚合 → 团紧了但方向是乱的（聚拢 ≠ 有序）',
+    !!coh && coh.pol < 0.7 && coh.radius < ali.radius,
+    coh && `极化度 ${coh.pol} 半径 ${coh.radius}，对比只有对齐的半径 ${ali && ali.radius}`)
+  check('三条全开是唯一「既有序又紧密」的配置',
+    !!all && all.pol > 0.9 && all.radius <= Math.min(...abl.map((r) => r.radius)) + 0.5,
+    all && `极化度 ${all.pol} 半径 ${all.radius}`)
 
   group('Boids · 相变')
   check('相变曲线已渲染',
@@ -250,6 +289,68 @@ async function checkBoids(ev) {
   check('低噪声端在图上明显高于高噪声端（有序 → 无序）',
     !!drop && drop.lastY > drop.firstY + 60,
     drop ? '首点 y=' + drop.firstY.toFixed(0) + ' 末点 y=' + drop.lastY.toFixed(0) : '取不到路径')
+
+  group('Boids · 侧栏（曾经滚不到底）')
+  await ev('localStorage.clear()')
+  await ev('window.scrollTo(0, 0)')
+  await sleep(300)
+  const railBox = await ev(`(function(){
+    var st = document.querySelector('.rail__sticky');
+    var rail = document.querySelector('.rail');
+    return JSON.stringify({
+      clientH: st.clientHeight,
+      scrollH: st.scrollHeight,
+      railH: Math.round(rail.getBoundingClientRect().height)
+    });
+  })()`)
+  const rb = JSON.parse(railBox)
+  check('侧栏内容高于视口（确实需要内部滚动）', rb.scrollH > rb.clientH, `${rb.scrollH} > ${rb.clientH}`)
+  // 关键回归点：sticky 元素必须比它的容器矮，否则没有可移动空间，根本不吸附
+  check('sticky 容器比粘性元素高（否则位移空间为 0）', rb.railH > rb.clientH + 50, `容器 ${rb.railH} vs 元素 ${rb.clientH}`)
+
+  await ev('window.scrollTo(0, 2000)')
+  await sleep(500)
+  const stuck = await ev(`(function(){
+    var st = document.querySelector('.rail__sticky');
+    var b = st.getBoundingClientRect();
+    return JSON.stringify({ top: Math.round(b.top), bottom: Math.round(b.bottom), vh: window.innerHeight });
+  })()`)
+  const sk = JSON.parse(stuck)
+  check('页面滚到 2000 后侧栏仍吸附在视口顶部',
+    Math.abs(sk.top - 22) < 5 && sk.bottom <= sk.vh + 2, `top=${sk.top} bottom=${sk.bottom}`)
+
+  const reached = await ev(`(function(){
+    var st = document.querySelector('.rail__sticky');
+    st.scrollTop = 999999;
+    var need = st.scrollHeight - st.clientHeight;
+    var last = st.querySelector('.panel:last-of-type');
+    var lb = last.getBoundingClientRect(), sb = st.getBoundingClientRect();
+    return JSON.stringify({ asked: Math.round(st.scrollTop), need: need, lastVisible: lb.bottom <= sb.bottom + 1 });
+  })()`)
+  const rc = JSON.parse(reached)
+  check('侧栏能滚到底，最后一组参数可见', rc.lastVisible && Math.abs(rc.asked - rc.need) < 2,
+    `滚了 ${rc.asked} / 需要 ${rc.need}`)
+
+  group('Boids · 折叠')
+  const heads = await ev("document.querySelectorAll('.rail .panel__head').length")
+  check('每组参数都有折叠开关', heads >= 4, heads + ' 组')
+  await ev("document.querySelectorAll('.rail .panel__head')[0].click()")
+  await sleep(250)
+  check('点标题即折叠该组', (await ev("document.querySelectorAll('.rail .panel.is-folded').length")) === 1)
+  check('折叠后内容真的隐藏',
+    (await ev("document.querySelectorAll('.rail .panel.is-folded .panel__body[hidden]').length")) === 1)
+  await ev("Array.from(document.querySelectorAll('.railtools__btn')).find(b=>b.textContent.includes('全部折叠')).click()")
+  await sleep(300)
+  const allFolded = await ev("document.querySelectorAll('.rail .panel.is-folded').length")
+  check('「全部折叠」一次收起所有参数组', allFolded >= 4, allFolded + ' 组已折叠')
+  const shrunk = await ev("document.querySelector('.rail__sticky').scrollHeight")
+  check('折叠后侧栏内容显著变短（不再需要滚动）', shrunk < rb.scrollH * 0.6, `${rb.scrollH} → ${shrunk}`)
+  await ev("Array.from(document.querySelectorAll('.railtools__btn')).find(b=>b.textContent.includes('全部展开')).click()")
+  await sleep(300)
+  check('「全部展开」恢复', (await ev("document.querySelectorAll('.rail .panel.is-folded').length")) === 0)
+
+  check('章节也能折叠', (await ev("document.querySelectorAll('.sec__fold').length")) >= 3,
+    (await ev("document.querySelectorAll('.sec__fold').length")) + ' 个章节可折叠')
 
   group('Boids · 交互')
   await ev("document.getElementById('btn-play').click()")
@@ -435,6 +536,7 @@ async function main() {
 
       console.log(`\n\x1b[1m\x1b[4m${page.name}\x1b[0m`)
       check(`${page.name} 无未捕获异常`, pageErrors.length === 0, pageErrors[0] || '')
+      await checkNav(evaluate, base, page.name)
       await page.fn(evaluate)
     }
 

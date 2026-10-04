@@ -318,7 +318,7 @@ export default function App() {
   return (
     <Lab theme="axelrod">
       <TooltipHost />
-      <LabNav current="axelrod" />
+      <LabNav current="axelrod" base="../" />
       <Masthead
         meta={['实验记录 · 1980', 'Journal of Conflict Resolution 24(3)', '17 位策略 · 循环赛']}
         titleCn="重复囚徒困境"

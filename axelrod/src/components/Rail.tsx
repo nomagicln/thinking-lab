@@ -4,6 +4,7 @@
 
 import { MATRIX_PRESETS, validateMatrix, type PayoffMatrix } from '../lib/engine'
 import { ROSTER_PRESETS, STRATEGIES, type RosterPreset } from '../lib/strategies'
+import { Panel, RailTools } from '../../../shared/components/lab'
 import { Chips, Slider } from '../../../shared/components/ui'
 import { colorOf } from '../lib/format'
 
@@ -44,10 +45,7 @@ function MatrixEditor(props: {
   }
 
   return (
-    <section className="panel">
-      <h2 className="panel__title">
-        收益矩阵<em>单次博弈的四个数字</em>
-      </h2>
+    <Panel id="matrix" title="收益矩阵" sub="单次博弈的四个数字">
 
       <div className="matrix-grid">
         <div className="matrix-grid__corner">我 ＼ 对方</div>
@@ -103,7 +101,7 @@ function MatrixEditor(props: {
         hostId="matrix-presets"
         onPick={(p) => props.onChange(p.matrix, p.id)}
       />
-    </section>
+    </Panel>
   )
 }
 
@@ -120,10 +118,7 @@ function MatchRules(props: {
   const expected = 1 / (1 - p.discount)
 
   return (
-    <section className="panel">
-      <h2 className="panel__title">
-        对局规则<em>它们相遇多久、多干净</em>
-      </h2>
+    <Panel id="match" title="对局规则" sub="它们相遇多久、多干净">
 
       {p.mode === 'fixed' && (
         <Slider
@@ -212,7 +207,7 @@ function MatchRules(props: {
           </button>
         </div>
       </div>
-    </section>
+    </Panel>
   )
 }
 
@@ -232,10 +227,7 @@ function RosterPicker(props: {
   const on = new Set(p.selectedIds)
 
   return (
-    <section className="panel">
-      <h2 className="panel__title">
-        参赛阵容<em>谁被允许进场</em>
-      </h2>
+    <Panel id="roster" title="参赛阵容" sub="谁被允许进场">
 
       <Chips
         items={ROSTER_PRESETS.map((r) => ({ id: r.id, name: r.name, detail: r.detail }))}
@@ -277,7 +269,7 @@ function RosterPicker(props: {
           )
         })}
       </div>
-    </section>
+    </Panel>
   )
 }
 
@@ -299,6 +291,7 @@ export function ControlRail(props: {
   return (
     <aside className="rail" aria-label="实验参数">
       <div className="rail__sticky">
+        <RailTools />
         <MatrixEditor
           matrix={props.p.matrix}
           presetId={props.p.matrixPresetId}

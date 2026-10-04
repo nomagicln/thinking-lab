@@ -17,7 +17,7 @@ import {
   type DemonParams,
   type DemonState
 } from './lib/engine'
-import { Lab, LabNav, Masthead, Section, Colophon } from '../../shared/components/lab'
+import { Lab, LabNav, Masthead, Panel, RailTools, Section, Colophon } from '../../shared/components/lab'
 import { Chips, Readout, Seg, Slider, Switch, TooltipHost } from '../../shared/components/ui'
 import { ChamberCanvas } from './components/ChamberCanvas'
 import {
@@ -125,7 +125,7 @@ export default function App() {
   return (
     <Lab theme="maxwell">
       <TooltipHost />
-      <LabNav current="maxwell" />
+      <LabNav current="maxwell" base="../" />
       <Masthead
         meta={['实验 03 · 1867 / 1961', 'Maxwell → Szilard → Landauer', '信息 · 熵 · 第二定律']}
         titleCn="麦克斯韦妖"
@@ -149,10 +149,8 @@ export default function App() {
       <main className="shell">
         <aside className="rail" aria-label="实验参数">
           <div className="rail__sticky">
-            <section className="panel">
-              <h2 className="panel__title">
-                箱子<em>有多少分子，多热</em>
-              </h2>
+            <RailTools />
+            <Panel id="box" title="箱子" sub="有多少分子，多热">
               <Slider
                 id="in-count"
                 label="粒子数"
@@ -186,12 +184,9 @@ export default function App() {
                 hint="门越大穿过的分子越多，但妖也越难挑得准。"
                 onChange={(v) => patch({ gateHeight: v })}
               />
-            </section>
+            </Panel>
 
-            <section className="panel">
-              <h2 className="panel__title">
-                妖<em>它怎么判断，能记多少</em>
-              </h2>
+            <Panel id="demon" title="妖" sub="它怎么判断，能记多少">
 
               <Slider
                 id="in-threshold"
@@ -268,7 +263,7 @@ export default function App() {
                 activeId={presetId}
                 onPick={(it) => applyPreset(it.id)}
               />
-            </section>
+            </Panel>
 
             <section className="panel panel--run">
               <button type="button" className="btn btn--primary" id="btn-reset" onClick={reset}>

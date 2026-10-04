@@ -218,6 +218,12 @@ code {
   align-items: start;
 }
 
+/* .shell 是 align-items: start，会让 .rail 的高度等于「内容高度」。
+   而 sticky 元素只能在自己的包含块内移动 —— 两者一样高，位移空间就是 0，
+   于是侧栏根本不吸附，一滚就整块划走，底部永远够不着。
+   让 .rail 撑满整行（与 stage 等高），sticky 才有地方「粘」。 */
+.rail { align-self: stretch; min-width: 0; }
+
 .rail__sticky {
   position: sticky;
   top: 22px;
@@ -228,6 +234,14 @@ code {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* 关键：面板是 flex 子项，默认 flex-shrink: 1 —— 内容一旦超过侧栏高度，
+   它们会被**压扁**，滑块和说明文字被裁掉或互相重叠，容器也不会产生滚动条。
+   这也正是「侧栏滑不到底」的真正原因。锁死为不可压缩，超出部分交给
+   .rail__sticky 的 overflow-y: auto 去滚。 */
+.rail__sticky > * {
+  flex: 0 0 auto;
 }
 
 .rail__sticky::-webkit-scrollbar { width: 8px; }
@@ -245,19 +259,43 @@ code {
   border: 1px solid var(--rule);
   background: linear-gradient(180deg, rgba(236,229,216,.032), rgba(236,229,216,.012));
   border-radius: 4px;
-  padding: 16px 16px 18px;
+  /* 内边距交给我们自己的 head / body，这样标题栏可以整块点击 */
+  padding: 0;
+  overflow: hidden;
 }
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 15px 16px 13px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  transition: background .18s ease;
+}
+.panel__head:hover { background: rgba(236,229,216,.03); }
+.panel__head:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.panel__body { padding: 0 16px 18px; }
+
+/* 折叠后只留一条标题栏，侧栏能一眼看全有哪些参数组 */
+.panel.is-folded .panel__body { display: none; }
 
 .panel__title {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  flex: 1 1 auto;
+  min-width: 0;
   font-family: var(--serif);
   font-size: 15px;
   letter-spacing: .03em;
-  margin-bottom: 14px;
-  padding-bottom: 11px;
-  border-bottom: 1px solid var(--rule);
+  margin: 0;
 }
 .panel__title em {
   font-family: var(--sans);
@@ -1188,3 +1226,76 @@ select option { background: var(--ink-3); color: var(--paper); }
   font-variant-numeric: tabular-nums;
 }
 .ablation__cell.is-dim { color: var(--paper-4); }
+
+
+/* ------------------------------------------------ 折叠控件（侧栏 + 章节共用） */
+
+[hidden] { display: none !important; }
+
+.foldbtn__chev {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid var(--paper-4);
+  border-bottom: 1.5px solid var(--paper-4);
+  /* 指向右 = 可展开；转 45° 指向下 = 可折叠 */
+  transform: rotate(-45deg);
+  transition: transform .22s ease, border-color .18s ease;
+}
+.panel__head:hover .foldbtn__chev,
+.sec__fold:hover .foldbtn__chev { border-color: var(--accent); }
+.panel:not(.is-folded) .panel__head .foldbtn__chev,
+.sec:not(.is-folded) .foldbtn__chev { transform: rotate(45deg); }
+
+.foldbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 5px 9px;
+  cursor: pointer;
+  color: var(--paper-4);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  transition: color .18s ease, border-color .18s ease;
+}
+.foldbtn:hover { color: var(--paper); border-color: var(--paper-4); }
+.foldbtn__label { line-height: 1; }
+
+/* 章节右上角的折叠按钮 */
+.sec__head { position: relative; }
+.sec__fold { position: absolute; top: 2px; right: 0; }
+.sec.is-folded .sec__body { display: none; }
+.sec.is-folded .sec__head { margin-bottom: 0; }
+
+/* ------------------------------------------------ 侧栏顶部工具条 */
+
+.railtools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px 2px;
+}
+.railtools__label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  color: var(--paper-4);
+}
+.railtools__spacer { flex: 1 1 auto; }
+.railtools__btn {
+  background: none;
+  border: 0;
+  padding: 3px 2px;
+  cursor: pointer;
+  color: var(--paper-4);
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: .04em;
+  border-bottom: 1px solid transparent;
+  transition: color .18s ease, border-color .18s ease;
+}
+.railtools__btn:hover { color: var(--accent); border-bottom-color: var(--accent-dim); }

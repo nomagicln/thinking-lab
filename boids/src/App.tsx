@@ -17,7 +17,7 @@ import {
   type FlockMetrics,
   type FlockState
 } from './lib/engine'
-import { Lab, LabNav, Masthead, Section, Colophon } from '../../shared/components/lab'
+import { Lab, LabNav, Masthead, Panel, RailTools, Section, Colophon } from '../../shared/components/lab'
 import { Chips, Readout, Seg, Slider, Switch, TooltipHost } from '../../shared/components/ui'
 import { FlockCanvas } from './components/FlockCanvas'
 import {
@@ -136,7 +136,7 @@ export default function App() {
       {
         label: '帧率',
         value: fps ? `${fps.toFixed(0)} fps` : '—',
-        hint: `${params.count} 只鸟两两比较，单帧约 ${Math.round((params.count * params.count) / 1000)} 千次距离计算`
+        hint: `邻居查找走均匀网格，单帧只需检查周围 3×3 个格子里的鸟，而不是全部 ${params.count} 只`
       }
     ]
   }, [metrics, fps, params.count])
@@ -146,7 +146,7 @@ export default function App() {
   return (
     <Lab theme="boids">
       <TooltipHost />
-      <LabNav current="boids" />
+      <LabNav current="boids" base="../" />
       <Masthead
         meta={['实验 02 · 1987', 'Reynolds, SIGGRAPH', '局部规则 → 全局秩序']}
         titleCn="Boids 鸟群模型"
@@ -170,10 +170,8 @@ export default function App() {
       <main className="shell">
         <aside className="rail" aria-label="仿真参数">
           <div className="rail__sticky">
-            <section className="panel">
-              <h2 className="panel__title">
-                群体<em>多少只鸟，看多远</em>
-              </h2>
+            <RailTools />
+            <Panel id="group" title="群体" sub="多少只鸟，看多远">
               <Slider
                 id="in-count"
                 label="鸟的数量"
@@ -182,7 +180,7 @@ export default function App() {
                 max={R('count').max}
                 step={R('count').step}
                 display={String(params.count)}
-                hint="两两比较是 O(n²)，数量拉到 600 以上会开始掉帧。"
+                hint="上限 2500。邻居查找走均匀网格，实测 2500 只仍有 50+ fps —— 真正吃力的是每帧要画几千个三角形。"
                 onChange={(v) => patch({ count: v })}
               />
               <Slider
@@ -207,12 +205,9 @@ export default function App() {
                 hint="360° 是全向感知。收窄到 120° 以下，鸟就看不到身后的同伴了。"
                 onChange={(v) => patch({ fov: (v * Math.PI) / 180 })}
               />
-            </section>
+            </Panel>
 
-            <section className="panel">
-              <h2 className="panel__title">
-                三条规则<em>整个模型就这么点东西</em>
-              </h2>
+            <Panel id="rules" title="三条规则" sub="整个模型就这么点东西">
               <Slider
                 id="in-sep"
                 label="分离"
@@ -246,12 +241,9 @@ export default function App() {
                 hint="朝邻居的中心靠拢。归零之后鸟群会慢慢散开。"
                 onChange={(v) => patch({ cohesion: v })}
               />
-            </section>
+            </Panel>
 
-            <section className="panel">
-              <h2 className="panel__title">
-                运动与扰动<em>速度上限、噪声、边界</em>
-              </h2>
+            <Panel id="motion" title="运动与扰动" sub="速度上限、噪声、边界">
               <Slider
                 id="in-speed"
                 label="最高速度"
@@ -297,12 +289,9 @@ export default function App() {
                   onChange={(v) => patch({ boundary: v })}
                 />
               </div>
-            </section>
+            </Panel>
 
-            <section className="panel">
-              <h2 className="panel__title">
-                掠食者<em>加一个天敌会怎样</em>
-              </h2>
+            <Panel id="predator" title="掠食者" sub="加一个天敌会怎样">
               <Slider
                 id="in-pred"
                 label="掠食者数量"
@@ -330,7 +319,7 @@ export default function App() {
                 activeId={presetId}
                 onPick={(it) => applyPreset(it.id)}
               />
-            </section>
+            </Panel>
 
             <section className="panel panel--run">
               <button type="button" className="btn btn--primary" id="btn-reset" onClick={reset}>
@@ -400,8 +389,8 @@ export default function App() {
                 快要撞上的鸟主要被<b>分离</b>推开，夹在队伍中间的鸟几乎只受<b>对齐</b>支配。
                 群体的复杂行为，就是这三股力在每只鸟身上不同的配比。
                 下方消融表把每条规则单独抽出来跑：任何一条单干都会退化 ——
-                只有分离是一盘散沙，只有对齐是薄薄一片，只有聚合挤成一坨；
-                三条同时在，最近邻距离才降到最低。
+                只有分离是一盘散沙，只有对齐方向统一却松散，只有聚合团是紧了但方向是乱的；
+                只有三条同时在，才同时拿到「有序」和「紧密」。
               </>
             }
           >
@@ -499,7 +488,8 @@ export default function App() {
                 的极化度 |Σ v̂| / N。
               </>,
               <>
-                每帧两两比较是 O(n²)。默认 260 只鸟时单帧约 6.8 万次距离计算，浏览器里仍有充足余量。
+                邻居查找用均匀网格做了加速：每只鸟只检查周围 3×3 个格子。
+                默认 260 只时单帧物理计算约 0.6 ms，拉到 2500 只也还有 50 fps 以上。
               </>
             ]}
           />

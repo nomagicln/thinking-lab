@@ -148,7 +148,7 @@ const CARDS: Card[] = [
 export default function Hub() {
   return (
     <Lab theme="axelrod">
-      <LabNav />
+      <LabNav base="./" />
       <main className="hub">
         <div className="hub__kicker">thinking-lab · 三个实验</div>
 
@@ -168,7 +168,7 @@ export default function Hub() {
             <a
               className="hub-card"
               key={c.id}
-              href={PATH_OF[c.id]}
+              href={"./" + PATH_OF[c.id]}
               style={{ '--card-accent': c.accent, animationDelay: `${200 + i * 90}ms` } as React.CSSProperties}
             >
               {c.motif}

@@ -283,10 +283,11 @@ const ANALYSIS_H = 300
 const SWEEP_LEVELS = 10
 const SWEEP_STEPS = 700
 const SWEEP_COUNT = 120
-// 实测标定：600 步时「三条全开」还没稳定收敛，同一组权重换个种子就能从 0.42 跳到 0.97；
-// 1000 步 × 2 个种子取平均后曲线才稳。少一个条件都会得出自相矛盾的结论。
-const ABLATION_STEPS = 1000
-const ABLATION_SEEDS = 2
+// 实测标定：这是四个混沌系统，单次运行的涨落足以颠倒结论
+//（1000 步 × 2 seed 时「只有聚合」的半径能落在 30~90 之间）。
+// 1600 步 × 3 seed 平均后，四行的大小关系在 6 个种子下都稳定。
+const ABLATION_STEPS = 1600
+const ABLATION_SEEDS = 3
 const ABLATION_COUNT = 120
 // 实时曲线（界面画布）用的是整套仿真里的那一份，这里不再重复定义尺寸
 
@@ -368,7 +369,7 @@ export function useAblation(params: BoidParams) {
       {
         id: 'coh',
         name: '只有聚合',
-        detail: '所有鸟挤成一坨 —— 聚合没有分离制衡就会塌缩',
+        detail: '都往邻居中间挤：团是紧了，但没有共同方向 —— 聚拢不等于有序',
         patch: { separation: 0, alignment: 0, cohesion: 1.2 }
       },
       {

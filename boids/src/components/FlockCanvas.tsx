@@ -109,9 +109,13 @@ export function FlockCanvas(props: {
       if (!state || !rng) return
 
       if (ui.running) {
-        const metrics = stepFlock(state, p, DT, W, H, rng)
+        // 指标只有 5Hz 采样给人看，没必要每帧都算 —— 而它恰恰是最贵的一段。
+        // 只有真要上报的那一帧才算，其余帧跳过。
+        const wantSample = now - lastSampleRef.current > 200
+        const metrics = stepFlock(state, p, DT, W, H, rng, wantSample)
+
         framesRef.current++
-        if (now - lastSampleRef.current > 200) {
+        if (wantSample) {
           const elapsed = (now - lastSampleRef.current) / 1000
           fpsRef.current = framesRef.current / elapsed
           framesRef.current = 0
