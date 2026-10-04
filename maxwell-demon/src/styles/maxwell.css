@@ -1,0 +1,125 @@
+/* ==========================================================================
+   maxwell-demon 实验专属样式
+   主色由 .lab--maxwell 提供（紫 #a894e8）
+   ========================================================================== */
+
+/* ------------------------------------------------ 观察窗与熵账本 */
+
+.chamber-wrap {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, rgba(111, 179, 224, 0.045) 0%, transparent 42%, transparent 58%, rgba(232, 85, 58, 0.05) 100%),
+    #080a09;
+  overflow: hidden;
+}
+.chamber-wrap canvas { display: block; width: 100%; height: auto; }
+
+/* 熵账本 */
+.ledger {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ledger__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 14px;
+  align-items: baseline;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--rule);
+}
+.ledger__row:last-child { border-bottom: 0; }
+
+.ledger__row--total {
+  background: rgba(168, 148, 232, 0.09);
+  border-top: 1px solid rgba(168, 148, 232, 0.28);
+}
+
+.ledger__label { font-size: 13px; color: var(--paper-2); }
+.ledger__label b { color: var(--paper); font-weight: 500; }
+.ledger__label em {
+  display: block;
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .04em;
+  color: var(--paper-4);
+  margin-top: 3px;
+}
+
+.ledger__value {
+  font-family: var(--mono);
+  font-size: 16px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--paper);
+}
+.ledger__value.is-neg { color: var(--vermilion); }
+.ledger__value.is-pos { color: var(--jade); }
+
+/* 熵天平：气体减少的熵 vs 擦除付出的熵 */
+.balance {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.balance__side {
+  padding: 16px 18px 18px;
+  display: grid;
+  gap: 9px;
+}
+.balance__side:first-child { border-right: 1px solid var(--rule); }
+
+.balance__head {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--paper-4);
+}
+
+.balance__bar {
+  height: 26px;
+  border-radius: 3px;
+  background: rgba(236, 229, 216, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+.balance__bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 3px;
+  transition: width .25s var(--ease);
+}
+
+.balance__num {
+  font-family: var(--mono);
+  font-size: 22px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.balance__verdict {
+  margin: 14px 0 0;
+  padding: 12px 15px;
+  border-radius: 3px;
+  border-left: 2px solid var(--accent);
+  background: rgba(168, 148, 232, 0.08);
+  font-size: 13px;
+  line-height: 1.72;
+  color: var(--paper);
+}
+.balance__verdict b { color: var(--accent); }
+
+@media (max-width: 900px) {
+  .rulesplit { grid-template-columns: minmax(0, 1fr); }
+  .balance { grid-template-columns: 1fr; }
+  .balance__side:first-child { border-right: 0; border-bottom: 1px solid var(--rule); }
+}

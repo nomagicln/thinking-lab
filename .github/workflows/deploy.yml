@@ -19,9 +19,6 @@ jobs:
   build:
     name: 自检并构建
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: axelrod-experiment
     steps:
       - uses: actions/checkout@v4
 
@@ -29,7 +26,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: axelrod-experiment/package-lock.json
 
       - name: 安装依赖
         run: npm ci
@@ -37,18 +33,18 @@ jobs:
       - name: 类型检查
         run: npm run typecheck
 
-      # 科学自检不通过就不要部署 —— 这套断言是这个实验的可证伪部分
+      # 三个实验的科学自检全部通过才允许部署
       - name: 科学自检
         run: npm test
 
-      - name: 构建
+      - name: 构建（多页）
         run: npm run build
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: axelrod-experiment/dist
+          path: dist
 
   deploy:
     name: 发布

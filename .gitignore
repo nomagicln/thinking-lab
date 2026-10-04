@@ -1,2 +1,11 @@
-.DS_Store
+# 依赖与构建产物
+node_modules/
+dist/
+*.tsbuildinfo
+
+# 测试产物
+.preview.png
 *.log
+
+# 系统
+.DS_Store
