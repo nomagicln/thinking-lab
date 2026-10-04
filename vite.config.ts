@@ -25,6 +25,11 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['**/src/**/*.test.ts', '**/*.test.ts'],
-    exclude: ['node_modules/**', 'dist/**']
+    exclude: ['node_modules/**', 'dist/**'],
+    // 默认 5 秒不够：Boids 的相变扫描每个用例要跑几千步群体仿真。
+    // 本地约 1 秒，GitHub runner 上慢两倍多 —— 不设这个会在 CI 超时，
+    // 而本地永远复现不出来。
+    testTimeout: 30000,
+    hookTimeout: 30000
   }
 })
