@@ -1,0 +1,62 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同时只跑一个部署，新的推送取消排队中的旧任务
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: 自检并构建
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: axelrod-experiment
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: axelrod-experiment/package-lock.json
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查
+        run: npm run typecheck
+
+      # 科学自检不通过就不要部署 —— 这套断言是这个实验的可证伪部分
+      - name: 科学自检
+        run: npm test
+
+      - name: 构建
+        run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: axelrod-experiment/dist
+
+  deploy:
+    name: 发布
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,10 @@
+# 依赖与构建产物
+node_modules/
+dist/
+*.tsbuildinfo
+
+# 测试产物
+.preview.png
+
+# 系统
+.DS_Store
